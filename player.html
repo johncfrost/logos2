@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>John Frost — Voice Demo Reel</title>
+<style>
+:root {
+  --cp-accent: #ff5500;
+  --cp-text: #222;
+  --cp-muted: #888;
+  --cp-border: #e5e5e5;
+  --cp-hover: #f5f5f5;
+  --cp-active: #fff5ed;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--cp-text);
+  font-size: 14px;
+  background: transparent;
+}
+.cp-wrap {
+  max-width: 640px;
+  margin: 0 auto;
+}
+.cp-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--cp-border);
+}
+.cp-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 12px 8px;
+  font: 500 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  color: var(--cp-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+.cp-tab:hover { color: var(--cp-text); }
+.cp-tab.active {
+  color: var(--cp-accent);
+  border-bottom-color: var(--cp-accent);
+}
+.cp-tracks {
+  max-height: 320px;
+  overflow-y: auto;
+}
+.cp-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--cp-border);
+  transition: background 0.1s;
+}
+.cp-track:last-child { border-bottom: none; }
+.cp-track:hover { background: var(--cp-hover); }
+.cp-track.playing { background: var(--cp-active); }
+.cp-track-num {
+  width: 22px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--cp-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.cp-track.playing .cp-track-num { color: var(--cp-accent); }
+.cp-track-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+.cp-track-time {
+  color: var(--cp-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.cp-track-dl {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cp-muted);
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.cp-track-dl:hover {
+  color: var(--cp-accent);
+  background: rgba(0,0,0,0.04);
+}
+.cp-transport {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-top: 1px solid var(--cp-border);
+}
+.cp-play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--cp-accent);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s;
+}
+.cp-play:hover { opacity: 0.85; }
+.cp-progress {
+  flex: 1;
+  height: 4px;
+  background: var(--cp-border);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+.cp-bar {
+  height: 100%;
+  background: var(--cp-accent);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+.cp-time {
+  font-size: 12px;
+  color: var(--cp-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .cp-tab { padding: 10px 4px; font-size: 12px; }
+  .cp-track { padding: 8px 8px; gap: 8px; }
+  .cp-transport { padding: 10px 8px; gap: 8px; }
+  .cp-tracks { max-height: 260px; }
+}
+</style>
+</head>
+<body>
+<div class="cp-wrap">
+  <div class="cp-tabs" id="cp-tabs"></div>
+  <div class="cp-tracks" id="cp-tracks"></div>
+  <div class="cp-transport">
+    <button type="button" class="cp-play" id="cp-play" aria-label="Play/Pause">&#9654;</button>
+    <div class="cp-progress" id="cp-prog">
+      <div class="cp-bar" id="cp-bar"></div>
+    </div>
+    <span class="cp-time"><span id="cp-cur">0:00</span> / <span id="cp-dur">0:00</span></span>
+  </div>
+</div>
+<audio id="cp-audio" preload="none"></audio>
+<script>
+(function () {
+  var BASE = 'https://johncfrost.github.io/logos2/audio/';
+  var PLAYLISTS = [
+    {
+      label: 'Commercial',
+      folder: 'commercial',
+      tracks: [
+        { file: '01-local-bank.mp3',        title: 'Local Bank' },
+        { file: '02-vision-direct.mp3',      title: 'Vision Direct' },
+        { file: '03-boise-schools.mp3',      title: 'Boise Schools' },
+        { file: '04-crown-royal.mp3',        title: 'Crown Royal' },
+        { file: '05-pure-clump.mp3',         title: 'Pure Clump' },
+        { file: '06-land-rover.mp3',         title: 'Land Rover' },
+        { file: '07-dollar-shave-club.mp3',  title: 'Dollar Shave Club' }
+      ]
+    },
+    {
+      label: 'Narration & Explainer',
+      folder: 'narration-explainer',
+      tracks: [
+        { file: '01-aerospace-product-launch.mp3',     title: 'Aerospace Product Launch' },
+        { file: '02-financial-services-explainer.mp3', title: 'Financial Services Explainer' },
+        { file: '03-hospital-team-welcome.mp3',        title: 'Hospital Team Welcome' },
+        { file: '04-nutriplan-website-explainer.mp3',  title: 'Nutriplan Website Explainer' },
+        { file: '05-medical-explainer.mp3',            title: 'Medical Explainer' }
+      ]
+    },
+    {
+      label: 'Documentary',
+      folder: 'documentary',
+      tracks: [
+        { file: '01-true-crime.mp3', title: 'True Crime' },
+        { file: '02-nature.mp3',     title: 'Nature' },
+        { file: '03-ufo.mp3',        title: 'UFO' }
+      ]
+    }
+  ];
+
+  var audio     = document.getElementById('cp-audio');
+  var tabsEl    = document.getElementById('cp-tabs');
+  var tracksEl  = document.getElementById('cp-tracks');
+  var playBtn   = document.getElementById('cp-play');
+  var progEl    = document.getElementById('cp-prog');
+  var bar       = document.getElementById('cp-bar');
+  var curEl     = document.getElementById('cp-cur');
+  var durEl     = document.getElementById('cp-dur');
+
+  var activeIdx = 0, currentTrackIdx = -1, durations = {};
+
+  function fmt(s) {
+    if (!s || isNaN(s) || !isFinite(s)) return '0:00';
+    var m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function trackUrl(p, t) { return BASE + p.folder + '/' + t.file; }
+
+  function setPlaying(on) {
+    playBtn.innerHTML = on ? '&#9646;&#9646;' : '&#9654;';
+  }
+
+  function preloadDurations(p) {
+    p.tracks.forEach(function (t, i) {
+      var u = trackUrl(p, t);
+      if (durations[u] !== undefined) return;
+      var a = new Audio();
+      a.preload = 'metadata';
+      a.src = u;
+      a.addEventListener('loadedmetadata', function () {
+        durations[u] = a.duration;
+        if (PLAYLISTS[activeIdx] === p) {
+          var el = tracksEl.querySelector('.cp-track[data-i="' + i + '"] .cp-track-time');
+          if (el) el.textContent = fmt(a.duration);
+        }
+      });
+    });
+  }
+
+  function renderTabs() {
+    tabsEl.innerHTML = PLAYLISTS.map(function (p, i) {
+      return '<button type="button" class="cp-tab' + (i === activeIdx ? ' active' : '') +
+             '" data-i="' + i + '">' + p.label + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(tabsEl.querySelectorAll('.cp-tab'), function (btn) {
+      btn.addEventListener('click', function () {
+        var i = parseInt(btn.dataset.i, 10);
+        if (i === activeIdx) return;
+        activeIdx = i;
+        currentTrackIdx = -1;
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+        bar.style.width = '0%';
+        curEl.textContent = '0:00';
+        durEl.textContent = '0:00';
+        setPlaying(false);
+        renderTabs();
+        renderTracks();
+        preloadDurations(PLAYLISTS[activeIdx]);
+      });
+    });
+  }
+
+  function renderTracks() {
+    var p = PLAYLISTS[activeIdx];
+    tracksEl.innerHTML = p.tracks.map(function (t, i) {
+      var d = durations[trackUrl(p, t)];
+      var num = (i === currentTrackIdx) ? '&#9654;' : (i + 1);
+      return '<div class="cp-track' + (i === currentTrackIdx ? ' playing' : '') + '" data-i="' + i + '">' +
+        '<span class="cp-track-num">' + num + '</span>' +
+        '<span class="cp-track-title">' + t.title + '</span>' +
+        '<span class="cp-track-time">' + (d !== undefined ? fmt(d) : '&#8212;:&#8212;') + '</span>' +
+        '<button type="button" class="cp-track-dl" data-i="' + i + '" title="Download">&#8595;</button>' +
+        '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(tracksEl.querySelectorAll('.cp-track'), function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.target.classList.contains('cp-track-dl')) return;
+        playTrack(parseInt(el.dataset.i, 10));
+      });
+    });
+
+    Array.prototype.forEach.call(tracksEl.querySelectorAll('.cp-track-dl'), function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        downloadTrack(parseInt(btn.dataset.i, 10));
+      });
+    });
+  }
+
+  function playTrack(i) {
+    var p = PLAYLISTS[activeIdx];
+    if (i < 0 || i >= p.tracks.length) return;
+    currentTrackIdx = i;
+    audio.src = trackUrl(p, p.tracks[i]);
+    audio.play().catch(function (err) { console.warn('Play failed:', err); });
+    renderTracks();
+  }
+
+  function downloadTrack(i) {
+    var p = PLAYLISTS[activeIdx];
+    var t = p.tracks[i];
+    var u = trackUrl(p, t);
+    fetch(u)
+      .then(function (r) { return r.blob(); })
+      .then(function (blob) {
+        var blobUrl = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = t.title.replace(/[^\w\s-]/g, '') + '.mp3';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 100);
+      })
+      .catch(function () { window.open(u, '_blank'); });
+  }
+
+  audio.addEventListener('play',  function () { setPlaying(true); });
+  audio.addEventListener('pause', function () { setPlaying(false); });
+  audio.addEventListener('ended', function () {
+    var p = PLAYLISTS[activeIdx];
+    if (currentTrackIdx + 1 < p.tracks.length) {
+      playTrack(currentTrackIdx + 1);
+    } else {
+      currentTrackIdx = -1;
+      bar.style.width = '0%';
+      setPlaying(false);
+      renderTracks();
+    }
+  });
+  audio.addEventListener('timeupdate', function () {
+    if (audio.duration) {
+      bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
+      curEl.textContent = fmt(audio.currentTime);
+    }
+  });
+  audio.addEventListener('loadedmetadata', function () {
+    durEl.textContent = fmt(audio.duration);
+  });
+
+  playBtn.addEventListener('click', function () {
+    if (currentTrackIdx === -1) {
+      playTrack(0);
+    } else if (audio.paused) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  });
+
+  progEl.addEventListener('click', function (e) {
+    if (!audio.duration) return;
+    var rect = progEl.getBoundingClientRect();
+    audio.currentTime = audio.duration * ((e.clientX - rect.left) / rect.width);
+  });
+
+  renderTabs();
+  renderTracks();
+  PLAYLISTS.forEach(function (p) { preloadDurations(p); });
+})();
+</script>
+</body>
+</html>
